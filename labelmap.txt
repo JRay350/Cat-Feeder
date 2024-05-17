@@ -1,2 +1,2 @@
-0 cat
-1 raccoon
+0  cat
+1  raccoon
