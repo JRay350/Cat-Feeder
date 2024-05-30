@@ -20,12 +20,15 @@
 # and run from the command line,
 #
 # $ python3 real_time_with_labels.py --model mobilenet_v2.tflite --label coco_labels.txt
-
+from dannytest import *
 import argparse
 
 import cv2
 import numpy as np
 import tflite_runtime.interpreter as tflite
+
+import signal
+import sys
 
 from picamera2 import MappedArray, Picamera2, Preview
 
@@ -103,23 +106,33 @@ def InferenceTensorFlow(image, model, output, label=None):
     #print('Num Boxes: ', num_boxes)
 
     rectangles = []
+    currentTime = 0 # In milliseconds and used to delay successive calls to catfeeder functions
     for i in range(int(num_boxes)):
         top, left, bottom, right = detected_boxes[0][i]
         classId = int(detected_classes[0][i])
         score = detected_scores[0][i]
-        if score > 0.5:
+        if score > 0.9:
             xmin = left * initial_w
             ymin = bottom * initial_h
             xmax = right * initial_w
             ymax = top * initial_h
             box = [xmin, ymin, xmax, ymax]
             rectangles.append(box)
+            if classId == 0: # In case of a cat detection
+                setup()
+                openfood()
+                cleanup()
             if labels:
                 print(labels[classId], 'score = ', score)
                 rectangles[-1].append(labels[classId])
             else:
                 print('score = ', score)
 
+# Allows program to pause and clean up before exiting
+# def exit_handler(sig, frame):
+#     print("Cleaning up...")
+#     cleanup() # Cleans up GPIO
+#     sys.exit(0)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -148,12 +161,18 @@ def main():
     picam2.post_callback = DrawRectangles
 
     picam2.start()
-
+    
+    setup() # Set up GPIO pins
+    GPIO.add_event_detect(BUTTON, GPIO.RISING, callback = pressed, bouncetime=100) # ISR to reset the feeder system software
+    
+    
     while True:
         buffer = picam2.capture_buffer("lores")
         grey = buffer[:stride * lowresSize[1]].reshape((lowresSize[1], stride))
         _ = InferenceTensorFlow(grey, args.model, output_file, label_file)
-
+    
+#     signal.signal(signal.SIGINT, exit_handler) # Register callback for CNTRL+C exit handling
+#     signal.pause() # Pause the program to have time to clean up
 
 if __name__ == '__main__':
     main()
