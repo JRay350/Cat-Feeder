@@ -21,6 +21,7 @@
 #
 # $ python3 real_time_with_labels.py --model mobilenet_v2.tflite --label coco_labels.txt
 from dannytest import *
+
 import argparse
 
 import cv2
@@ -30,6 +31,8 @@ import tflite_runtime.interpreter as tflite
 import signal
 import sys
 import time
+import SSD1306 
+from PIL import Image, ImageDraw, ImageFont
 
 from picamera2 import MappedArray, Picamera2, Preview
 
@@ -40,6 +43,12 @@ rectangles = []
 
 ready_to_feed = True # Flag for when a feeding should be happen. This is used to delay feeding constantly when a cat is in view
 last_recorded_time = time.time() # Used to delay successive calls to catfeeder functions by tracking previous feeding
+
+# OLED display dimensions
+OLED_WIDTH = 128
+OLED_HEIGHT = 32
+
+oled = SSD1306.SSD1306_128_32() # Initialize OLED Display
 
 def ReadLabelFile(file_path):
     with open(file_path, 'r') as f:
@@ -63,7 +72,20 @@ def DrawRectangles(request):
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 cv2.putText(m.array, text, (int(rect[0] * 2) + 10, int(rect[1] * 2) + 10),
                             font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-
+                
+def print_message(line, message): # Draw OLED message content
+    # Clear previous content
+    image = Image.new("1", (OLED_WIDTH, OLED_HEIGHT))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+    
+    # Print the message
+    draw.text((0, line * 10), message, font=font, fill=255)
+    oled.image(image)
+    oled.display()
+    
+def clear_message(): # Clear OLED message content
+    print_message(2, " " * 20)
 
 def InferenceTensorFlow(image, model, output, label=None):
     global rectangles
@@ -125,13 +147,13 @@ def InferenceTensorFlow(image, model, output, label=None):
             box = [xmin, ymin, xmax, ymax]
             rectangles.append(box)
             if ready_to_feed and classId == 0: # In case of a cat detection and when ready, feed
-                print("Time difference: " + str(time.time() - last_recorded_time))
-                print("Feeding")
+                print_message(1, "Feeding") # Output feeding status to OLED
                 setup() # Set up GPIO Pins
                 openfood()
                 cleanup()
                 last_recorded_time = time.time() # Update previous feeding time
                 ready_to_feed = False # Update feeder flag
+                clear_message() # Clear OLED
             if labels:
                 print(labels[classId], 'score = ', score)
                 rectangles[-1].append(labels[classId])
