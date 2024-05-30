@@ -29,6 +29,7 @@ import tflite_runtime.interpreter as tflite
 
 import signal
 import sys
+import time
 
 from picamera2 import MappedArray, Picamera2, Preview
 
@@ -37,6 +38,8 @@ lowresSize = (320, 240)
 
 rectangles = []
 
+ready_to_feed = True # Flag for when a feeding should be happen. This is used to delay feeding constantly when a cat is in view
+last_recorded_time = time.time() # Used to delay successive calls to catfeeder functions by tracking previous feeding
 
 def ReadLabelFile(file_path):
     with open(file_path, 'r') as f:
@@ -105,12 +108,15 @@ def InferenceTensorFlow(image, model, output, label=None):
     num_boxes = interpreter.get_tensor(output_details[2]['index'])
     #print('Num Boxes: ', num_boxes)
 
+    global ready_to_feed
+    global last_recorded_time
     rectangles = []
-    currentTime = 0 # In milliseconds and used to delay successive calls to catfeeder functions
     for i in range(int(num_boxes)):
         top, left, bottom, right = detected_boxes[0][i]
         classId = int(detected_classes[0][i])
         score = detected_scores[0][i]
+        if (time.time() - last_recorded_time >= 10): # Flag for feeding after a 10 second buffer from the previous feeding
+            ready_to_feed = True
         if score > 0.9:
             xmin = left * initial_w
             ymin = bottom * initial_h
@@ -118,10 +124,14 @@ def InferenceTensorFlow(image, model, output, label=None):
             ymax = top * initial_h
             box = [xmin, ymin, xmax, ymax]
             rectangles.append(box)
-            if classId == 0: # In case of a cat detection
-                setup()
-                openfood()
-                cleanup()
+            if ready_to_feed and classId == 0: # In case of a cat detection and when ready, feed
+                print("Time difference: " + str(time.time() - last_recorded_time))
+                print("Feeding")
+#                 setup() # Set up GPIO Pins
+#                 openfood()
+#                 cleanup()
+                last_recorded_time = time.time() # Update previous feeding time
+                ready_to_feed = False # Update feeder flag
             if labels:
                 print(labels[classId], 'score = ', score)
                 rectangles[-1].append(labels[classId])
@@ -162,9 +172,8 @@ def main():
 
     picam2.start()
     
-    setup() # Set up GPIO pins
+    setup() # Set up GPIO Pins to Prevent ISR from erroring
     GPIO.add_event_detect(BUTTON, GPIO.RISING, callback = pressed, bouncetime=100) # ISR to reset the feeder system software
-    
     
     while True:
         buffer = picam2.capture_buffer("lores")
