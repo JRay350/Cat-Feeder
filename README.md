@@ -1,0 +1,1 @@
+This repository houses the software component of a Cat Feeding system, powered by a Raspberry Pi designed to distinguish between cats and raccoons and to respond accordingly given Pi Camera input. Cats will be fed and raccoons will be scared off.
