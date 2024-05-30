@@ -127,9 +127,9 @@ def InferenceTensorFlow(image, model, output, label=None):
             if ready_to_feed and classId == 0: # In case of a cat detection and when ready, feed
                 print("Time difference: " + str(time.time() - last_recorded_time))
                 print("Feeding")
-#                 setup() # Set up GPIO Pins
-#                 openfood()
-#                 cleanup()
+                setup() # Set up GPIO Pins
+                openfood()
+                cleanup()
                 last_recorded_time = time.time() # Update previous feeding time
                 ready_to_feed = False # Update feeder flag
             if labels:
