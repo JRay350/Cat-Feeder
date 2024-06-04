@@ -7,6 +7,7 @@ PIN2 = 6
 PIN3 = 13
 PIN4 = 19
 BUTTON  = 26
+LED = 24
 # Define the sequence of signals for 4-phase stepping
 sequence = [
     [1, 0, 0, 0],
@@ -24,7 +25,6 @@ def pressed(channel):
     print("button pressed")
     setup()
     openfood()
-    cleanup()
     # check = True
 
 
@@ -36,8 +36,8 @@ def setup():
     GPIO.setup(PIN2, GPIO.OUT)
     GPIO.setup(PIN3, GPIO.OUT)
     GPIO.setup(PIN4, GPIO.OUT)
-    GPIO.setup(BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
-
+    GPIO.setup(BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_UP)
+    GPIO.setup(LED, GPIO.OUT)
 
 def cleanup():
     # Clean up GPIO settings
@@ -72,12 +72,14 @@ def openfood():
 # if __name__ == '__main__':
 #     try:
 #         setup()
-#         GPIO.add_event_detect(BUTTON, GPIO.RISING, callback = pressed, bouncetime=100)
+# #         GPIO.add_event_detect(BUTTON, GPIO.RISING, callback = pressed, bouncetime=100)
 #         while (True):
-#             if check:
-#                 openfood()
-#             else:
-#                 print("")
+# #             if check:
+# #                 openfood()
+# #             else:
+# #                 print("")
+#             print("Feeding...")
+#             openfood()
 #     except KeyboardInterrupt:
 #         pass
 #     finally:
