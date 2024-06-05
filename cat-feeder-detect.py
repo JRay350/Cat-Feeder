@@ -44,6 +44,7 @@ rectangles = []
 ready_to_feed = True # Flag for when a feeding should be happen. This is used to delay feeding constantly when a cat is in view
 last_recorded_feed = time.time() # Used to delay successive calls to catfeeder functions by tracking previous feeding
 last_recorded_raccoon = 0
+feedings = 0
 
 
 # OLED display dimensions
@@ -133,7 +134,7 @@ def InferenceTensorFlow(image, model, output, label=None):
     num_boxes = interpreter.get_tensor(output_details[2]['index'])
     #print('Num Boxes: ', num_boxes)
 
-    global last_recorded_feed, ready_to_feed, last_recorded_raccoon, racc
+    global last_recorded_feed, ready_to_feed, last_recorded_raccoon, racc, feedings, check
     rectangles = []
     for i in range(int(num_boxes)):
         top, left, bottom, right = detected_boxes[0][i]
@@ -144,6 +145,7 @@ def InferenceTensorFlow(image, model, output, label=None):
         if (racc and time.time() - last_recorded_raccoon >= 5): # If it's been five seconds since you found a raccoon
             GPIO.output(LED, GPIO.LOW) # Turn off the LED
             racc = False # Flag the raccoon as gone
+            clear_message()
             print("Raccoon has moved away")
         if score > 0.99:
             xmin = left * initial_w
@@ -153,18 +155,28 @@ def InferenceTensorFlow(image, model, output, label=None):
             box = [xmin, ymin, xmax, ymax]
             rectangles.append(box)
             if classId == 1: # In case of a raccoon detection, turn on the LED
-                setup() # Set up GPIO Pins
+#                 setup() # Set up GPIO Pins
                 racc = True # Flag a raccoon's presence
                 last_recorded_raccoon = time.time() # Take a time stamp of when the raccoon was seen
                 GPIO.output(LED, GPIO.HIGH) # Turn on LED
+                print_message(1, "Raccoon Detected")
+
             elif ready_to_feed and classId == 0: # In case of a cat detection and when ready, feed
-                print_message(1, "Feeding") # Output feeding status to OLED
-                setup() # Set up GPIO Pins
+                clear_message()
+                print_message(1, "Cat Detected, Feeding") # Output feeding status to OLED
+#                 setup() # Set up GPIO Pins
                 openfood()
 #                 cleanup()
                 last_recorded_feed = time.time() # Update previous feeding time
                 ready_to_feed = False # Update feeder flag
+                feedings += 1
                 clear_message() # Clear OLED
+#             elif check == True:
+#                 check = False
+# #                 setup()
+#                 print("Opened Food")
+#                 openfood()
+# #                 cleanup()
             if labels:
                 print(labels[classId], 'score = ', score)
                 rectangles[-1].append(labels[classId])
@@ -206,10 +218,12 @@ def main():
     picam2.start()
     
     setup() # Set up GPIO Pins to Prevent ISR from erroring
-    GPIO.add_event_detect(BUTTON, GPIO.FALLING, callback = pressed, bouncetime=100) # ISR to reset the feeder system software
+    GPIO.add_event_detect(BUTTON, GPIO.RISING, callback = pressed, bouncetime=100) # ISR to reset the feeder system software
     GPIO.output(LED, GPIO.LOW)
     
     while True:
+        if (not racc):
+            print_message(1, "Cat Feeder System")
         buffer = picam2.capture_buffer("lores")
         grey = buffer[:stride * lowresSize[1]].reshape((lowresSize[1], stride))
         _ = InferenceTensorFlow(grey, args.model, output_file, label_file)

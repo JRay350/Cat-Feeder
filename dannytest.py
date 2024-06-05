@@ -21,11 +21,10 @@ sequence = [
 ]
 # check = False
 def pressed(channel):
-    global check
+#     global check
     print("button pressed")
-    setup()
+#     check = True
     openfood()
-    # check = True
 
 
 def setup():
@@ -36,7 +35,7 @@ def setup():
     GPIO.setup(PIN2, GPIO.OUT)
     GPIO.setup(PIN3, GPIO.OUT)
     GPIO.setup(PIN4, GPIO.OUT)
-    GPIO.setup(BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_UP)
+    GPIO.setup(BUTTON, GPIO.IN, pull_up_down = GPIO.PUD_DOWN)
     GPIO.setup(LED, GPIO.OUT)
 
 def cleanup():
